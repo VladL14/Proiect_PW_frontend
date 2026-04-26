@@ -1,0 +1,73 @@
+.lobby-container {
+  max-width: 600px;
+  margin: 40px auto;
+  font-family: sans-serif;
+}
+
+.create-player-section {
+  background: #f4f4f9;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.name-input {
+  padding: 8px;
+  margin-right: 10px;
+  width: 200px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.create-btn {
+  padding: 8px 16px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.create-btn:hover {
+  background: #0056b3;
+}
+
+.empty-state {
+  color: gray;
+  font-style: italic;
+}
+
+.player-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.player-item {
+  border: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+}
+
+.action-btn {
+  padding: 6px 12px; background: #28a745; color: white;
+  border: none; border-radius: 4px; cursor: pointer;
+}
+.action-btn:hover { background: #218838; }
+
+.match-list { list-style: none; padding: 0; }
+.match-item {
+  border: 1px solid #b8daff; background: #e2eef9;
+  padding: 15px; margin-bottom: 10px; border-radius: 6px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.badge {
+  padding: 3px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold;
+}
+.status-WAITING { background: #ffc107; color: #000; }
+.status-IN_PROGRESS { background: #17a2b8; color: #fff; }
