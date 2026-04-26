@@ -2,7 +2,17 @@
   <h1>🎲 Dice Duel - Lobby</h1>
 
   <div class="create-player-section">
-    </div>
+    <h3>Înscrie-te în joc</h3>
+    <input 
+      type="text" 
+      [(ngModel)]="newPlayerName" 
+      placeholder="Introdu numele tău..." 
+      class="name-input"
+    />
+    <button (click)="addPlayer()" class="create-btn">
+      Crează Jucător
+    </button>
+  </div>
 
   <h3>Jucători Activi ({{ players.length }})</h3>
   <ul class="player-list">
