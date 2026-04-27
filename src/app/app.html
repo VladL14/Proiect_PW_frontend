@@ -1,47 +1,87 @@
-<div class="lobby-container">
+<div class="lobby-container" *ngIf="{ players: players$ | async, matches: matches$ | async } as data">
   <h1>🎲 Dice Duel - Lobby</h1>
 
   <div class="create-player-section">
-    <h3>Înscrie-te în joc</h3>
-    <input 
-      type="text" 
-      [(ngModel)]="newPlayerName" 
-      placeholder="Introdu numele tău..." 
-      class="name-input"
-    />
-    <button (click)="addPlayer()" class="create-btn">
-      Crează Jucător
-    </button>
+    <h3>Create Player</h3>
+    <div class="input-group">
+      <input type="text" [(ngModel)]="newPlayerName" placeholder="Enter your name..." class="name-input" />
+      <button (click)="addPlayer()" class="create-btn">Create Player</button>
+    </div>
   </div>
 
-  <h3>Jucători Activi ({{ players.length }})</h3>
+  <h3>Active Players ({{ data.players?.length || 0 }})</h3>
   <ul class="player-list">
-    <li *ngFor="let player of players" class="player-item">
-      <div>
+    <li *ngFor="let player of data.players" class="player-item">
+      <div class="player-info">
         <strong>{{ player.name }}</strong><br>
         <small>❤️ {{ player.hearts }} | 🪙 {{ player.tokens }}</small>
       </div>
-      <button (click)="createNewMatch(player.id)" class="action-btn">
-        Crează Meci
-      </button>
+      <div class="button-group">
+        <button (click)="createNewMatch(player.id)" class="action-btn success">Create Match</button>
+        <button (click)="loadPlayerStats(player.id, player.name)" class="action-btn info">
+          {{ (playerStats$ | async)?.playerId === player.id ? 'Hide Stats' : 'Stats' }}
+        </button>
+      </div>
     </li>
   </ul>
+  
+  <ng-container *ngIf="playerStats$ | async as stats">
+    <div class="stats-section">
+      <h3>📊 Player Statistics: {{ stats.playerName }}</h3>
+      <div class="stats-grid">
+        <div class="stat-card">✅ Wins: {{ stats.data.wins }}</div>
+        <div class="stat-card">❌ Losses: {{ stats.data.losses }}</div>
+      </div>
+    </div>
+  </ng-container>
 
-  <hr style="margin: 30px 0; border: 1px solid #eee;">
+  <hr class="separator">
 
-  <h3>Meciuri pe Server ({{ matches.length }})</h3>
-  <p *ngIf="matches.length === 0" class="empty-state">
-    Niciun meci activ. Crează unul folosind un jucător de mai sus!
-  </p>
+  <div class="match-header">
+    <h3>Matches on Server ({{ data.matches?.length || 0 }})</h3>
+    <div class="filter-section">
+      <label>Status: </label>
+      <select [(ngModel)]="statusFilter" (change)="filterMatches()" class="name-input small">
+        <option value="">All</option>
+        <option value="WAITING">Waiting</option>
+        <option value="READY">Ready</option>
+        <option value="IN_PROGRESS">In Progress</option>
+        <option value="FINISHED">Finished</option>
+      </select>
+    </div>
+  </div>
+
+  <div *ngIf="(data.players?.length || 0) > 0" class="active-user-simulator">
+    <label><strong>Simulează acțiuni pentru: </strong></label>
+    <select [(ngModel)]="activePlayerId" class="name-input">
+      <option *ngFor="let player of data.players" [value]="player.id">{{ player.name }}</option>
+    </select>
+  </div>
+
+  <p *ngIf="data.matches?.length === 0" class="empty-state">No active matches. Create one above!</p>
 
   <ul class="match-list">
-    <li *ngFor="let match of matches" class="match-item">
-      <div>
-        <strong>Meci ID:</strong> {{ match.id?.substring(0, 8) }}...<br>
+    <li *ngFor="let match of data.matches" class="match-item">
+      <div class="match-info">
         <span class="badge status-{{match.status}}">{{ match.status }}</span>
       </div>
-      <div>
-        <strong>Jucători înscriși:</strong> {{ match.players.length }}/4
+      <div class="match-players">
+        <strong>Host:</strong> {{ match.players[0]?.name || 'N/A' }}<br>
+        <strong>Players:</strong> {{ match.players.length }} / 4
+      </div>
+      <div class="button-group">
+        <button
+          (click)="joinMatch(match.id)"
+          class="action-btn primary"
+          *ngIf="match.players.length < 4 && match.status !== 'IN_PROGRESS' && match.status !== 'FINISHED'">
+          Join
+        </button>
+        <button
+          (click)="startMatch(match.id)"
+          class="action-btn warning"
+          [disabled]="match.status !== 'READY' || match.players[0]?.id !== activePlayerId">
+          Start
+        </button>
       </div>
     </li>
   </ul>
