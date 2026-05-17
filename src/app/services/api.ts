@@ -118,6 +118,10 @@ export class ApiService {
 
   // Rounds
 
+  getMatchRounds(matchId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/matches/${matchId}/rounds`);
+  }
+
   getRound(matchId: string, roundId: string): Observable<any> {
     return this.http.get<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}`);
   }
@@ -140,6 +144,10 @@ export class ApiService {
 
   lockDice(matchId: string, roundId: string, playerId: string, lockedIndexes: number[]): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/lock`, { playerId, lockedIndexes });
+  }
+
+  setTarget(matchId: string, roundId: string, playerId: string, targetId: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/target`, { playerId, targetId });
   }
 
   updateLockedDice(matchId: string, roundId: string, locked: boolean[]): Observable<any> {

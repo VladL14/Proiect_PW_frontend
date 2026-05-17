@@ -1,9 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from './services/api';
 import { Match, Player } from './models/game.models';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subscription, interval } from 'rxjs';
+import { switchMap, filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
@@ -12,7 +13,7 @@ import { BehaviorSubject } from 'rxjs';
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
-export class App implements OnInit {
+export class App implements OnInit, OnDestroy {
   players$ = new BehaviorSubject<Player[]>([]);
   matches$ = new BehaviorSubject<Match[]>([]);
   playerStats$ = new BehaviorSubject<{ playerId: string; playerName: string; data: any } | null>(null);
@@ -21,12 +22,29 @@ export class App implements OnInit {
   activePlayerId: string = '';
   statusFilter: string = '';
 
+  // --- Game State ---
+  activeMatchId: string | null = null;
+  matchState$ = new BehaviorSubject<any>(null);
+  roundState$ = new BehaviorSubject<any>(null);
+  playerAbilities$ = new BehaviorSubject<any[]>([]);
+  
+  selectedAbilityId: string = '';
+  selectedTargetId: string = '';
+
+  private pollingSub?: Subscription;
+
   constructor(private apiService: ApiService) {}
 
   ngOnInit() {
     this.loadPlayers();
     this.loadMatches();
   }
+
+  ngOnDestroy() {
+    this.stopPolling();
+  }
+
+  // --- Lobby Methods ---
 
   loadPlayers() {
     this.apiService.getPlayers().subscribe({
@@ -99,7 +117,10 @@ export class App implements OnInit {
   startMatch(matchId: string | undefined) {
     if (!matchId) return;
     this.apiService.startMatch(matchId).subscribe({
-      next: () => this.loadMatches(),
+      next: () => {
+        this.loadMatches();
+        this.enterMatch(matchId);
+      },
       error: (err) => console.error(err)
     });
   }
@@ -125,5 +146,170 @@ export class App implements OnInit {
 
   filterMatches() {
     this.loadMatches(this.statusFilter || undefined);
+  }
+
+  // --- Game Board Methods ---
+
+  enterMatch(matchId: string | undefined) {
+    if (!matchId) return;
+    this.activeMatchId = matchId;
+    this.loadPlayerAbilities();
+    this.pollMatchState();
+    this.startPolling();
+  }
+
+  leaveMatch() {
+    this.activeMatchId = null;
+    this.stopPolling();
+    this.matchState$.next(null);
+    this.roundState$.next(null);
+    this.selectedAbilityId = '';
+    this.selectedTargetId = '';
+    this.loadMatches();
+  }
+
+  loadPlayerAbilities() {
+    if (!this.activePlayerId) return;
+    this.apiService.getPlayerAbilities(this.activePlayerId).subscribe({
+      next: (abilities) => this.playerAbilities$.next(abilities || []),
+      error: (err) => console.error('Error fetching abilities', err)
+    });
+  }
+
+  private startPolling() {
+    this.stopPolling();
+    this.pollingSub = interval(2000)
+      .pipe(filter(() => !!this.activeMatchId))
+      .subscribe(() => this.pollMatchState());
+  }
+
+  private stopPolling() {
+    if (this.pollingSub) {
+      this.pollingSub.unsubscribe();
+      this.pollingSub = undefined;
+    }
+  }
+
+  private pollMatchState() {
+    if (!this.activeMatchId) return;
+    this.apiService.getMatchState(this.activeMatchId).subscribe({
+      next: (state) => {
+        this.matchState$.next(state);
+        // Fetch all rounds to safely get the actual UUID of the active round
+        this.apiService.getMatchRounds(this.activeMatchId!).subscribe({
+          next: (rounds) => {
+            if (rounds && rounds.length > 0) {
+              // The active round is typically the last one created
+              this.roundState$.next(rounds[rounds.length - 1]);
+            } else {
+              this.roundState$.next(null);
+            }
+          },
+          error: (err) => console.error('Error fetching rounds list', err)
+        });
+      },
+      error: (err) => {
+        console.error('Error fetching state', err);
+      }
+    });
+  }
+
+  getRoundId(): string | null {
+    const round = this.roundState$.getValue();
+    return round && round.id ? round.id.toString() : null;
+  }
+
+  rollDice() {
+    if (!this.activeMatchId) return;
+    const roundId = this.getRoundId();
+    if (!roundId) return;
+    
+    this.apiService.rollDice(this.activeMatchId, roundId, this.activePlayerId).subscribe({
+      next: () => this.pollMatchState(),
+      error: (err) => {
+        console.error(err);
+        const msg = err.error?.message || err.error || err.message;
+        alert(`Could not roll dice. Backend says: ${msg}`);
+      }
+    });
+  }
+
+  toggleDiceLock(index: number) {
+    if (!this.activeMatchId) return;
+    const round = this.roundState$.getValue();
+    const roundId = this.getRoundId();
+    if (!round || !roundId) return;
+
+    const playerState = round.playerStates?.find((s: any) => s.playerId === this.activePlayerId);
+    if (!playerState) return;
+
+    const currentLocked = playerState.locked || [false, false, false, false, false];
+    const newLocked = [...currentLocked];
+    newLocked[index] = !newLocked[index];
+
+    // Convert boolean array to array of locked indexes
+    const lockedIndexes: number[] = [];
+    newLocked.forEach((isLocked: boolean, idx: number) => {
+      if (isLocked) lockedIndexes.push(idx);
+    });
+
+    this.apiService.lockDice(this.activeMatchId, roundId, this.activePlayerId, lockedIndexes).subscribe({
+      next: () => this.pollMatchState(),
+      error: (err) => {
+        console.error(err);
+        let msg = err.error?.message || err.error || err.message;
+        if (typeof msg === 'object') msg = JSON.stringify(msg);
+        alert(`Could not lock dice. Backend says: ${msg}`);
+      }
+    });
+  }
+
+  setTarget(targetId: string) {
+    if (!this.activeMatchId) return;
+    const roundId = this.getRoundId();
+    if (!roundId) return;
+
+    this.apiService.setTarget(this.activeMatchId, roundId, this.activePlayerId, targetId).subscribe({
+      next: () => this.pollMatchState(),
+      error: (err) => {
+        console.error(err);
+        const msg = err.error?.message || err.error || err.message;
+        alert(`Could not set target. Backend says: ${msg}`);
+      }
+    });
+  }
+
+  activateAbility() {
+    if (!this.activeMatchId || !this.selectedAbilityId) return;
+    const roundId = this.getRoundId();
+    if (!roundId) return;
+
+    this.apiService.activateAbility(this.activeMatchId, roundId, this.activePlayerId, this.selectedAbilityId, this.selectedTargetId || undefined).subscribe({
+      next: () => {
+        this.selectedAbilityId = '';
+        this.selectedTargetId = '';
+        this.pollMatchState();
+      },
+      error: (err) => {
+        console.error('Ability error', err);
+        const msg = err.error?.message || err.error || err.message;
+        alert(`Could not activate ability. Backend says: ${msg}`);
+      }
+    });
+  }
+
+  resolveRound() {
+    if (!this.activeMatchId) return;
+    const roundId = this.getRoundId();
+    if (!roundId) return;
+    
+    this.apiService.resolveRound(this.activeMatchId, roundId).subscribe({
+      next: () => this.pollMatchState(),
+      error: (err) => {
+        console.error(err);
+        const msg = err.error?.message || err.error || err.message;
+        alert(`Could not resolve phase. Backend says: ${msg}`);
+      }
+    });
   }
 }

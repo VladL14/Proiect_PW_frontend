@@ -1,12 +1,12 @@
 export interface Player {
-  id?: string;
+  id: string;
   name: string;
   hearts: number;
   tokens: number;
 }
 
 export interface Match {
-  id?: string;
+  id: string;
   status: string;
   players: Player[];
 }

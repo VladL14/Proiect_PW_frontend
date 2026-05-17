@@ -1,88 +1,292 @@
-<div class="lobby-container" *ngIf="{ players: players$ | async, matches: matches$ | async } as data">
-  <h1>🎲 Dice Duel - Lobby</h1>
+<ng-container *ngIf="{ players: players$ | async, matches: matches$ | async } as data">
 
-  <div class="create-player-section">
-    <h3>Create Player</h3>
-    <div class="input-group">
-      <input type="text" [(ngModel)]="newPlayerName" placeholder="Enter your name..." class="name-input" />
-      <button (click)="addPlayer()" class="create-btn">Create Player</button>
+<!-- ================= LOBBY VIEW ================= -->
+<div class="lobby-wrapper" *ngIf="!activeMatchId">
+  <header class="app-header">
+    <div class="logo">
+      <span class="dice-icon">⚄</span>
+      <h1>Dice Duel</h1>
     </div>
-  </div>
-
-  <h3>Active Players ({{ data.players?.length || 0 }})</h3>
-  <ul class="player-list">
-    <li *ngFor="let player of data.players" class="player-item">
-      <div class="player-info">
-        <strong>{{ player.name }}</strong><br>
-        <small>❤️ {{ player.hearts }} | 🪙 {{ player.tokens }}</small>
-      </div>
-      <div class="button-group">
-        <button (click)="createNewMatch(player.id)" class="action-btn success">Create Match</button>
-        <button (click)="loadPlayerStats(player.id, player.name)" class="action-btn info">
-          {{ (playerStats$ | async)?.playerId === player.id ? 'Hide Stats' : 'Stats' }}
-        </button>
-      </div>
-    </li>
-  </ul>
-  
-  <ng-container *ngIf="playerStats$ | async as stats">
-    <div class="stats-section">
-      <h3>📊 Player Statistics: {{ stats.playerName }}</h3>
-      <div class="stats-grid">
-        <div class="stat-card">✅ Wins: {{ stats.data.wins }}</div>
-        <div class="stat-card">❌ Losses: {{ stats.data.losses }}</div>
+    
+    <div *ngIf="(data.players?.length || 0) > 0" class="active-user-simulator glass-panel">
+      <label>Simulator Acting As:</label>
+      <div class="select-wrapper">
+        <select [(ngModel)]="activePlayerId" class="glass-input">
+          <option *ngFor="let player of data.players" [value]="player.id">{{ player.name }}</option>
+        </select>
       </div>
     </div>
-  </ng-container>
+  </header>
 
-  <hr class="separator">
-
-  <div class="match-header">
-    <h3>Matches on Server ({{ data.matches?.length || 0 }})</h3>
-    <div class="filter-section">
-      <label>Status: </label>
-      <select [(ngModel)]="statusFilter" (change)="filterMatches()" class="name-input small">
-        <option value="">All</option>
-        <option value="WAITING">Waiting</option>
-        <option value="READY">Ready</option>
-        <option value="IN_PROGRESS">In Progress</option>
-        <option value="FINISHED">Finished</option>
-      </select>
-    </div>
-  </div>
-
-  <div *ngIf="(data.players?.length || 0) > 0" class="active-user-simulator">
-    <label><strong>Simulează acțiuni pentru: </strong></label>
-    <select [(ngModel)]="activePlayerId" class="name-input">
-      <option *ngFor="let player of data.players" [value]="player.id">{{ player.name }}</option>
-    </select>
-  </div>
-
-  <p *ngIf="data.matches?.length === 0" class="empty-state">No active matches. Create one above!</p>
-
-  <ul class="match-list">
-    <li *ngFor="let match of data.matches" class="match-item">
-      <div class="match-info">
-        <span class="badge status-{{match.status}}">{{ match.status }}</span>
+  <main class="dashboard">
+    <!-- Sidebar: Players -->
+    <aside class="sidebar">
+      <div class="glass-panel create-player-section">
+        <h3>New Player</h3>
+        <div class="input-group">
+          <input type="text" [(ngModel)]="newPlayerName" placeholder="Enter name..." class="glass-input" />
+          <button (click)="addPlayer()" class="btn btn-glow">Join</button>
+        </div>
       </div>
-      <div class="match-players">
-        <strong>Host:</strong> {{ match.players[0]?.name || 'N/A' }}<br>
-        <strong>Players:</strong> {{ match.players.length }} / 4
+
+      <div class="glass-panel players-panel">
+        <div class="panel-header">
+          <h3>Active Players</h3>
+          <span class="count-badge">{{ data.players?.length || 0 }}</span>
+        </div>
+        
+        <ul class="player-list">
+          <li *ngFor="let player of data.players" class="player-card">
+            <div class="player-info">
+              <div class="player-avatar">{{ player.name.charAt(0).toUpperCase() }}</div>
+              <div class="player-details">
+                <strong>{{ player.name }}</strong>
+                <div class="player-stats-mini">
+                  <span class="stat"><i class="icon-heart">❤️</i> {{ player.hearts }}</span>
+                  <span class="stat"><i class="icon-token">🪙</i> {{ player.tokens }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="button-group-vertical">
+              <button (click)="createNewMatch(player.id)" class="btn btn-outline-cyan btn-sm">Host</button>
+              <button (click)="loadPlayerStats(player.id, player.name)" class="btn btn-outline-ghost btn-sm">
+                {{ (playerStats$ | async)?.playerId === player.id ? 'Close' : 'Stats' }}
+              </button>
+            </div>
+          </li>
+        </ul>
       </div>
-      <div class="button-group">
-        <button
-          (click)="joinMatch(match.id)"
-          class="action-btn primary"
-          *ngIf="match.players.length < 4 && match.status !== 'IN_PROGRESS' && match.status !== 'FINISHED'">
-          Join
-        </button>
-        <button
-          (click)="startMatch(match.id)"
-          class="action-btn warning"
-          [disabled]="match.status !== 'READY' || match.players[0]?.id !== activePlayerId">
-          Start
-        </button>
+
+      <!-- Stats Overlay -->
+      <div class="glass-panel stats-section" *ngIf="playerStats$ | async as stats">
+        <h3>{{ stats.playerName }}'s Stats</h3>
+        <div class="stats-grid">
+          <div class="stat-box win">
+            <span class="label">Wins</span>
+            <span class="value">{{ stats.data.wins }}</span>
+          </div>
+          <div class="stat-box loss">
+            <span class="label">Losses</span>
+            <span class="value">{{ stats.data.losses }}</span>
+          </div>
+        </div>
       </div>
-    </li>
-  </ul>
+    </aside>
+
+    <!-- Main Content: Matches -->
+    <section class="matches-area">
+      <div class="glass-panel match-header-panel">
+        <div class="panel-header">
+          <h2>Server Matches</h2>
+          <span class="count-badge large">{{ data.matches?.length || 0 }}</span>
+        </div>
+        <div class="filter-wrapper">
+          <label>Filter:</label>
+          <div class="select-wrapper">
+            <select [(ngModel)]="statusFilter" (change)="filterMatches()" class="glass-input small">
+              <option value="">All Statuses</option>
+              <option value="WAITING">Waiting</option>
+              <option value="READY">Ready</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="FINISHED">Finished</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-state glass-panel" *ngIf="data.matches?.length === 0">
+        <div class="empty-icon">🎮</div>
+        <h3>No matches found</h3>
+        <p>Host a match from the player menu to get started!</p>
+      </div>
+
+      <div class="match-grid">
+        <div *ngFor="let match of data.matches" class="match-card glass-panel status-{{match.status}}">
+          <div class="match-card-header">
+            <span class="match-id">Match #{{ match.id?.substring(0, 6) || 'Unknown' }}</span>
+            <span class="status-badge">{{ match.status }}</span>
+          </div>
+          
+          <div class="match-card-body">
+            <div class="host-info">
+              <span class="label">Host</span>
+              <span class="value">{{ match.players[0]?.name || 'N/A' }}</span>
+            </div>
+            <div class="capacity-info">
+              <div class="capacity-bar">
+                <div class="capacity-fill" [style.width.%]="(match.players.length / 4) * 100"></div>
+              </div>
+              <span class="capacity-text">{{ match.players.length }} / 4 Players</span>
+            </div>
+            
+            <div class="players-avatars">
+              <div *ngFor="let p of match.players" class="mini-avatar" [title]="p.name">
+                {{ p.name.charAt(0).toUpperCase() }}
+              </div>
+              <div *ngFor="let empty of [].constructor(4 - match.players.length)" class="mini-avatar empty">+</div>
+            </div>
+          </div>
+
+          <div class="match-card-footer">
+            <button
+              *ngIf="match.players.length < 4 && match.status !== 'IN_PROGRESS' && match.status !== 'FINISHED'"
+              (click)="joinMatch(match.id)"
+              class="btn btn-primary btn-full">
+              Join Match
+            </button>
+            <button
+              *ngIf="match.status === 'READY'"
+              (click)="startMatch(match.id)"
+              class="btn btn-success btn-full"
+              [disabled]="match.players[0]?.id !== activePlayerId">
+              {{ match.players[0]?.id === activePlayerId ? 'Start Match' : 'Waiting for Host' }}
+            </button>
+            <button
+              *ngIf="match.status === 'IN_PROGRESS'"
+              (click)="enterMatch(match.id)"
+              class="btn btn-warning btn-full">
+              Play / Spectate
+            </button>
+            <button
+              *ngIf="match.status === 'FINISHED'"
+              class="btn btn-disabled btn-full">
+              Finished
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
 </div>
+
+<!-- ================= GAME BOARD VIEW ================= -->
+<div class="game-wrapper" *ngIf="activeMatchId">
+  <div class="game-board-container" *ngIf="matchState$ | async as gameState; else loadingGame">
+    
+    <header class="game-header glass-panel">
+      <div class="game-info">
+        <h2>🎲 Match In Progress</h2>
+        <span class="badge status-IN_PROGRESS">Status: {{ gameState.match?.status || 'Unknown' }}</span>
+      </div>
+      <button class="btn btn-outline-ghost" (click)="leaveMatch()">Leave Match</button>
+    </header>
+
+    <div class="game-layout">
+      
+      <!-- Left Panel: Game Play Area -->
+      <div class="play-area glass-panel">
+        <h3 class="round-title">Round {{ gameState.currentRound?.id || gameState.currentRound || 1 }}</h3>
+        <p class="turn-indicator">
+          Phase: <strong class="phase-badge">{{ (roundState$ | async)?.status || 'LOADING' }}</strong>
+        </p>
+        <p class="turn-indicator" *ngIf="(roundState$ | async)?.status !== 'RESOLVED'">
+          Current Turn: 
+          <strong [ngClass]="{'text-glow': gameState.currentTurnPlayerId === activePlayerId}">
+            {{ gameState.currentTurnPlayerId === activePlayerId ? 'YOUR TURN' : 'Opponent\'s Turn' }}
+          </strong>
+        </p>
+
+        <div class="all-players-dice">
+          <div class="player-dice-section" *ngFor="let pState of (roundState$ | async)?.playerStates">
+            <h4>{{ pState.playerId === activePlayerId ? 'Your Dice' : 'Opponent Dice' }} (Rolls: {{ pState.rollsCount }}/2)</h4>
+            <div class="dice-container" *ngIf="pState.dice?.length > 0; else noDice">
+              <div class="die" 
+                   *ngFor="let dieVal of pState.dice; let i = index"
+                   [class.locked]="pState.locked?.[i]"
+                   [class.disabled-die]="pState.playerId !== activePlayerId || gameState.currentTurnPlayerId !== activePlayerId"
+                   [ngClass]="'die-' + dieVal.toLowerCase().replace('_', '-')"
+                   (click)="pState.playerId === activePlayerId && gameState.currentTurnPlayerId === activePlayerId ? toggleDiceLock(i) : null">
+                <span class="die-value">
+                  {{ dieVal.includes('ATTACK') ? '⚔️' : dieVal.includes('SHIELD') ? '🛡️' : dieVal.includes('STEAL') ? '🎭' : '🎲' }}
+                </span>
+                <span class="lock-icon" *ngIf="pState.locked?.[i]">🔒</span>
+              </div>
+            </div>
+            <ng-template #noDice>
+              <p class="text-muted">Waiting to roll...</p>
+            </ng-template>
+            
+            <div *ngIf="pState.playerId === activePlayerId && gameState.currentTurnPlayerId === activePlayerId" class="target-selector">
+              <select #targetSelect class="glass-input" (change)="setTarget(targetSelect.value)">
+                <option value="">-- Select Attack/Steal Target --</option>
+                <ng-container *ngFor="let p of gameState.players || gameState.match?.players">
+                  <option *ngIf="p.id !== activePlayerId" [value]="p.id" [selected]="p.id === pState.attackTargetId">
+                    {{ p.name }}
+                  </option>
+                </ng-container>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="game-actions">
+          <button class="btn btn-glow btn-large" 
+                  (click)="rollDice()" 
+                  [disabled]="gameState.currentTurnPlayerId !== activePlayerId">
+            Roll / Reroll
+          </button>
+          <button class="btn btn-success btn-large" 
+                  (click)="resolveRound()"
+                  *ngIf="(roundState$ | async)?.status === 'TARGET_SELECTION'">
+            Resolve Phase
+          </button>
+        </div>
+
+        <div class="abilities-panel" *ngIf="(playerAbilities$ | async)?.length">
+          <h4>✨ Your Abilities</h4>
+          <div class="ability-controls">
+            <select [(ngModel)]="selectedAbilityId" class="glass-input">
+              <option value="">-- Select Ability --</option>
+              <option *ngFor="let ab of (playerAbilities$ | async)" [value]="ab.id">
+                {{ ab.name }} (Cost: {{ ab.cost }} 🪙)
+              </option>
+            </select>
+            
+            <select [(ngModel)]="selectedTargetId" class="glass-input">
+              <option value="">-- Select Target --</option>
+              <ng-container *ngFor="let p of gameState.players || gameState.match?.players">
+                <option *ngIf="p.id !== activePlayerId" [value]="p.id">
+                  {{ p.name }}
+                </option>
+              </ng-container>
+            </select>
+
+            <button class="btn btn-primary" (click)="activateAbility()" [disabled]="!selectedAbilityId">
+              Cast Ability
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Panel: Players List -->
+      <aside class="game-players-panel glass-panel">
+        <h3>Players in Match</h3>
+        <ul class="in-game-player-list">
+          <li *ngFor="let p of gameState.players || gameState.match?.players" 
+              class="in-game-player-card">
+            
+            <div class="player-avatar">{{ p.name.charAt(0).toUpperCase() }}</div>
+            <div class="player-details">
+              <strong>{{ p.name }}</strong>
+              <div class="stats-row">
+                <span class="stat heart">❤️ {{ p.hearts }}</span>
+                <span class="stat token">🪙 {{ p.tokens }}</span>
+              </div>
+            </div>
+            <div class="you-badge" *ngIf="p.id === activePlayerId">YOU</div>
+          </li>
+        </ul>
+      </aside>
+      
+    </div>
+  </div>
+  
+  <ng-template #loadingGame>
+    <div class="loading-state glass-panel">
+      <h2>Loading Match State...</h2>
+      <div class="spinner"></div>
+    </div>
+  </ng-template>
+</div>
+
+</ng-container>
