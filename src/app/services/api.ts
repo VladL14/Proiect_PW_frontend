@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Player, Match } from '../models/game.models';
+import { Match, MatchState, Player, RoundState } from '../models/game.models';
 
 @Injectable({
   providedIn: 'root'
@@ -112,18 +112,18 @@ export class ApiService {
     return this.http.patch<Match>(`${this.baseUrl}/matches/${matchId}/status`, { status });
   }
 
-  getMatchState(matchId: string): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/matches/${matchId}/state`);
+  getMatchState(matchId: string): Observable<MatchState> {
+    return this.http.get<MatchState>(`${this.baseUrl}/matches/${matchId}/state`);
   }
 
   // Rounds
 
-  getMatchRounds(matchId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/matches/${matchId}/rounds`);
+  getMatchRounds(matchId: string): Observable<RoundState[]> {
+    return this.http.get<RoundState[]>(`${this.baseUrl}/matches/${matchId}/rounds`);
   }
 
-  getRound(matchId: string, roundId: string): Observable<any> {
-    return this.http.get<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}`);
+  getRound(matchId: string, roundId: string): Observable<RoundState> {
+    return this.http.get<RoundState>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}`);
   }
 
   updateRound(matchId: string, roundId: string, body: { status: string; dice: string[]; locked: boolean[] }): Observable<any> {
@@ -138,24 +138,24 @@ export class ApiService {
     return this.http.delete<void>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}`);
   }
 
-  rollDice(matchId: string, roundId: string, playerId: string): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/roll`, { playerId });
+  rollDice(matchId: string, roundId: string, playerId: string): Observable<RoundState> {
+    return this.http.post<RoundState>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/roll`, { playerId });
   }
 
-  lockDice(matchId: string, roundId: string, playerId: string, lockedIndexes: number[]): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/lock`, { playerId, lockedIndexes });
+  lockDice(matchId: string, roundId: string, playerId: string, lockedIndexes: number[]): Observable<RoundState> {
+    return this.http.post<RoundState>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/lock`, { playerId, lockedIndexes });
   }
 
-  setTarget(matchId: string, roundId: string, playerId: string, diceTargets: { [key: number]: string }): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/target`, { playerId, diceTargets });
+  setTarget(matchId: string, roundId: string, playerId: string, diceTargets: { [key: number]: string }): Observable<RoundState> {
+    return this.http.post<RoundState>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/target`, { playerId, diceTargets });
   }
 
   updateLockedDice(matchId: string, roundId: string, locked: boolean[]): Observable<any> {
     return this.http.patch<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/locked-dice`, { locked });
   }
 
-  resolveRound(matchId: string, roundId: string): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/resolve`, {});
+  resolveRound(matchId: string, roundId: string): Observable<MatchState> {
+    return this.http.post<MatchState>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/resolve`, {});
   }
 
   // Replay
