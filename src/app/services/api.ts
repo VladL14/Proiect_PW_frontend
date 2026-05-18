@@ -146,8 +146,8 @@ export class ApiService {
     return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/lock`, { playerId, lockedIndexes });
   }
 
-  setTarget(matchId: string, roundId: string, playerId: string, targetId: string): Observable<any> {
-    return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/target`, { playerId, targetId });
+  setTarget(matchId: string, roundId: string, playerId: string, diceTargets: { [key: number]: string }): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/rounds/${roundId}/target`, { playerId, diceTargets });
   }
 
   updateLockedDice(matchId: string, roundId: string, locked: boolean[]): Observable<any> {

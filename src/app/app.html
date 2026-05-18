@@ -103,7 +103,7 @@
       <div class="match-grid">
         <div *ngFor="let match of data.matches" class="match-card glass-panel status-{{match.status}}">
           <div class="match-card-header">
-            <span class="match-id">Match #{{ match.id?.substring(0, 6) || 'Unknown' }}</span>
+            <span class="match-id">Match #{{ match.id.substring(0, 6) || 'Unknown' }}</span>
             <span class="status-badge">{{ match.status }}</span>
           </div>
           
@@ -187,36 +187,43 @@
         </p>
 
         <div class="all-players-dice">
-          <div class="player-dice-section" *ngFor="let pState of (roundState$ | async)?.playerStates">
-            <h4>{{ pState.playerId === activePlayerId ? 'Your Dice' : 'Opponent Dice' }} (Rolls: {{ pState.rollsCount }}/2)</h4>
-            <div class="dice-container" *ngIf="pState.dice?.length > 0; else noDice">
-              <div class="die" 
-                   *ngFor="let dieVal of pState.dice; let i = index"
-                   [class.locked]="pState.locked?.[i]"
-                   [class.disabled-die]="pState.playerId !== activePlayerId || gameState.currentTurnPlayerId !== activePlayerId"
-                   [ngClass]="'die-' + dieVal.toLowerCase().replace('_', '-')"
-                   (click)="pState.playerId === activePlayerId && gameState.currentTurnPlayerId === activePlayerId ? toggleDiceLock(i) : null">
-                <span class="die-value">
-                  {{ dieVal.includes('ATTACK') ? '⚔️' : dieVal.includes('SHIELD') ? '🛡️' : dieVal.includes('STEAL') ? '🎭' : '🎲' }}
-                </span>
-                <span class="lock-icon" *ngIf="pState.locked?.[i]">🔒</span>
+          <ng-container *ngFor="let pState of (roundState$ | async)?.playerStates">
+            <div class="player-dice-section" *ngIf="pState.playerId === activePlayerId || (pState.playerId !== activePlayerId && pState.playerId === gameState.currentTurnPlayerId)">
+              <h4>{{ pState.playerId === activePlayerId ? 'Your Dice' : 'Opponent Dice' }} (Rolls: {{ pState.rollsCount }}/2)</h4>
+              <div class="dice-container" *ngIf="pState.dice?.length > 0; else noDice">
+                <div class="die" 
+                     *ngFor="let dieVal of pState.dice; let i = index"
+                     [class.locked]="pState.locked?.[i]"
+                     [class.disabled-die]="pState.playerId !== activePlayerId || gameState.currentTurnPlayerId !== activePlayerId"
+                     [ngClass]="'die-' + dieVal.toLowerCase().replace('_', '-')"
+                     (click)="pState.playerId === activePlayerId && gameState.currentTurnPlayerId === activePlayerId ? toggleDiceLock(i) : null">
+                  <span class="die-value">
+                    {{ dieVal.includes('ATTACK') ? '⚔️' : dieVal.includes('SHIELD') ? '🛡️' : dieVal.includes('STEAL') ? '🎭' : '🎲' }}
+                  </span>
+                  <span class="lock-icon" *ngIf="pState.locked?.[i]">🔒</span>
+                </div>
+              </div>
+              <ng-template #noDice>
+                <p class="text-muted">Waiting to roll...</p>
+              </ng-template>
+              
+              <div *ngIf="pState.playerId === activePlayerId && gameState.currentTurnPlayerId === activePlayerId" class="target-selectors">
+                <ng-container *ngFor="let dieVal of pState.dice; let i = index">
+                  <select *ngIf="dieVal.includes('ATTACK') || dieVal.includes('STEAL')"
+                          class="glass-input small"
+                          (change)="setTargetAbility(i, targetSelect.value)"
+                          #targetSelect>
+                    <option value="">Target for {{ dieVal.includes('ATTACK') ? 'Attack' : 'Steal' }} #{{ i + 1 }}</option>
+                    <ng-container *ngFor="let p of gameState.players || gameState.match?.players">
+                      <option *ngIf="p.id !== activePlayerId" [value]="p.id" [selected]="p.id === diceTargets[i]">
+                        {{ p.name }}
+                      </option>
+                    </ng-container>
+                  </select>
+                </ng-container>
               </div>
             </div>
-            <ng-template #noDice>
-              <p class="text-muted">Waiting to roll...</p>
-            </ng-template>
-            
-            <div *ngIf="pState.playerId === activePlayerId && gameState.currentTurnPlayerId === activePlayerId" class="target-selector">
-              <select #targetSelect class="glass-input" (change)="setTarget(targetSelect.value)">
-                <option value="">-- Select Attack/Steal Target --</option>
-                <ng-container *ngFor="let p of gameState.players || gameState.match?.players">
-                  <option *ngIf="p.id !== activePlayerId" [value]="p.id" [selected]="p.id === pState.attackTargetId">
-                    {{ p.name }}
-                  </option>
-                </ng-container>
-              </select>
-            </div>
-          </div>
+          </ng-container>
         </div>
 
         <div class="game-actions">

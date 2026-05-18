@@ -32,16 +32,20 @@ export class App implements OnInit, OnDestroy {
   selectedTargetId: string = '';
 
   private pollingSub?: Subscription;
+  private lobbyPollingSub?: Subscription;
+  diceTargets: { [key: number]: string } = {};
 
   constructor(private apiService: ApiService) {}
 
   ngOnInit() {
     this.loadPlayers();
     this.loadMatches();
+    this.startLobbyPolling();
   }
 
   ngOnDestroy() {
     this.stopPolling();
+    this.stopLobbyPolling();
   }
 
   // --- Lobby Methods ---
@@ -153,6 +157,7 @@ export class App implements OnInit, OnDestroy {
   enterMatch(matchId: string | undefined) {
     if (!matchId) return;
     this.activeMatchId = matchId;
+    this.stopLobbyPolling();
     this.loadPlayerAbilities();
     this.pollMatchState();
     this.startPolling();
@@ -165,7 +170,9 @@ export class App implements OnInit, OnDestroy {
     this.roundState$.next(null);
     this.selectedAbilityId = '';
     this.selectedTargetId = '';
+    this.diceTargets = {};
     this.loadMatches();
+    this.startLobbyPolling();
   }
 
   loadPlayerAbilities() {
@@ -174,6 +181,23 @@ export class App implements OnInit, OnDestroy {
       next: (abilities) => this.playerAbilities$.next(abilities || []),
       error: (err) => console.error('Error fetching abilities', err)
     });
+  }
+
+  private startLobbyPolling() {
+    this.stopLobbyPolling();
+    this.lobbyPollingSub = interval(3000)
+      .pipe(filter(() => !this.activeMatchId))
+      .subscribe(() => {
+        this.loadPlayers();
+        this.loadMatches(this.statusFilter || undefined);
+      });
+  }
+
+  private stopLobbyPolling() {
+    if (this.lobbyPollingSub) {
+      this.lobbyPollingSub.unsubscribe();
+      this.lobbyPollingSub = undefined;
+    }
   }
 
   private startPolling() {
@@ -234,6 +258,14 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
+  hasAbility(abilityType: 'ATTACK' | 'STEAL'): boolean {
+    const round = this.roundState$.getValue();
+    if (!round) return false;
+    const playerState = round.playerStates?.find((s: any) => s.playerId === this.activePlayerId);
+    if (!playerState || !playerState.dice) return false;
+    return playerState.dice.some((dieVal: string) => dieVal.includes(abilityType));
+  }
+
   toggleDiceLock(index: number) {
     if (!this.activeMatchId) return;
     const round = this.roundState$.getValue();
@@ -254,7 +286,12 @@ export class App implements OnInit, OnDestroy {
     });
 
     this.apiService.lockDice(this.activeMatchId, roundId, this.activePlayerId, lockedIndexes).subscribe({
-      next: () => this.pollMatchState(),
+      next: () => {
+        this.pollMatchState();
+        if (lockedIndexes.length === 5) {
+          this.rollDice();
+        }
+      },
       error: (err) => {
         console.error(err);
         let msg = err.error?.message || err.error || err.message;
@@ -264,12 +301,18 @@ export class App implements OnInit, OnDestroy {
     });
   }
 
-  setTarget(targetId: string) {
+  setTargetAbility(dieIndex: number, targetId: string) {
+    if (targetId) {
+      this.diceTargets[dieIndex] = targetId;
+    } else {
+      delete this.diceTargets[dieIndex];
+    }
+    
     if (!this.activeMatchId) return;
     const roundId = this.getRoundId();
     if (!roundId) return;
 
-    this.apiService.setTarget(this.activeMatchId, roundId, this.activePlayerId, targetId).subscribe({
+    this.apiService.setTarget(this.activeMatchId, roundId, this.activePlayerId, this.diceTargets).subscribe({
       next: () => this.pollMatchState(),
       error: (err) => {
         console.error(err);
