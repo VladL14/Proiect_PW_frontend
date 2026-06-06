@@ -3,7 +3,7 @@
 <!-- Stage 4: account bar (ACL-aware: options are only shown for the matching role) -->
 <nav class="account-bar" aria-label="Account">
   <span class="account-chip" *ngIf="isAuthenticated">
-    {{ account?.name }} · <strong>{{ accountRole }}</strong>
+    {{ account?.name }} - <strong>{{ accountRole }}</strong><span *ngIf="isAccountSuspended()"> - SUSPENDED</span>
   </span>
   <button type="button" class="account-button" *ngIf="isAuthenticated" (click)="openPanel('history')">History</button>
   <button type="button" class="account-button admin" *ngIf="isAdmin" (click)="openPanel('admin')">Admin</button>
@@ -65,7 +65,13 @@
               <span>{{ player.hearts }} HP / {{ player.tokens }} Gold</span>
             </div>
             <div class="mini-actions">
-              <button type="button" (click)="createNewMatch(player.id)" class="game-button small">Host</button>
+              <button
+                type="button"
+                (click)="createNewMatch(player.id)"
+                [disabled]="isAccountSuspended()"
+                class="game-button small">
+                Host
+              </button>
               <button type="button" (click)="loadPlayerStats(player.id, player.name)" class="game-button ghost small">
                 {{ (playerStats$ | async)?.playerId === player.id ? 'Close' : 'Stats' }}
               </button>
@@ -136,6 +142,7 @@
             type="button"
             *ngIf="match.players.length < 4 && match.status !== 'IN_PROGRESS' && match.status !== 'FINISHED'"
             (click)="joinMatch(match.id)"
+            [disabled]="isAccountSuspended()"
             class="game-button full">
             Join Match
           </button>
@@ -279,7 +286,6 @@
                   *ngFor="let die of playerState.dice; let i = index"
                   class="battle-die die-{{ die.toLowerCase() }}"
                   [class.locked]="playerState.locked[i]"
-                  [class.needs-target]="requiresTarget(die) && !targetForDie(i)"
                   [class.selected]="selectedDieIndex === i"
                   (click)="selectDieForTarget(i)"
                   tabindex="0"
@@ -289,8 +295,8 @@
                   <span class="target-badge" *ngIf="requiresTarget(die) && targetForDie(i)">
                     Target: {{ targetName(targetForDie(i)) }}
                   </span>
-                  <span class="target-badge warning" *ngIf="requiresTarget(die) && !targetForDie(i)">
-                    Needs target
+                  <span class="target-badge optional" *ngIf="requiresTarget(die) && !targetForDie(i)">
+                    Optional target
                   </span>
                   <span class="target-badge shield" *ngIf="die === 'SHIELD'">No target</span>
 
@@ -368,11 +374,11 @@
               </select>
 
               <select [(ngModel)]="selectedTargetId" class="game-select">
-                <option value="">Select target</option>
+                <option value="">{{ selectedAbilityRequiresTarget() ? 'Select target' : 'No target needed' }}</option>
                 <option *ngFor="let target of validTargets()" [value]="target.id">{{ target.name }}</option>
               </select>
 
-              <button type="button" class="game-button" (click)="activateAbility()" [disabled]="!selectedAbilityId">
+              <button type="button" class="game-button" (click)="activateAbility()" [disabled]="!canActivateAbility()">
                 Activate Ability
               </button>
             </div>

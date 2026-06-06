@@ -614,10 +614,6 @@
   font-weight: 900;
 }
 
-.battle-die.needs-target {
-  border-color: rgba(198, 72, 58, 0.8);
-}
-
 .die-attack {
   background: linear-gradient(145deg, rgba(198, 72, 58, 0.42), rgba(35, 10, 8, 0.88));
 }
@@ -666,6 +662,11 @@
 .target-badge.warning {
   color: #ffd3cd;
   background: rgba(198, 72, 58, 0.24);
+}
+
+.target-badge.optional {
+  color: #ffe0a3;
+  background: rgba(244, 188, 92, 0.18);
 }
 
 .target-badge.shield {

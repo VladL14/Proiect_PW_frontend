@@ -43,6 +43,7 @@ export class App implements OnInit, OnDestroy {
   selectedDieIndex: number | null = null;
   targetWarning = '';
   diceTargets: { [key: number]: string } = {};
+  private feedbackLogs: string[] = [];
 
   dicebearStyles = ['adventurer', 'bottts', 'pixel-art', 'lorelei', 'fun-emoji', 'thumbs'];
   showAvatarPanel = false;
@@ -76,6 +77,10 @@ export class App implements OnInit, OnDestroy {
 
   get accountRole(): Role {
     return this.authService.role;
+  }
+
+  isAccountSuspended(): boolean {
+    return this.account?.status === 'SUSPENDED';
   }
 
   openPanel(panel: 'none' | 'login' | 'admin' | 'history'): void {
@@ -178,6 +183,10 @@ export class App implements OnInit, OnDestroy {
     if (!hostId) {
       return;
     }
+    if (this.isAccountSuspended()) {
+      alert('Suspended accounts cannot create or join matches.');
+      return;
+    }
     this.apiService.createMatch(hostId, 4).subscribe({
       next: (match) => this.matches$.next([...this.matches$.getValue(), match]),
       error: (err) => console.error(err)
@@ -186,6 +195,10 @@ export class App implements OnInit, OnDestroy {
 
   joinMatch(matchId: string | undefined) {
     if (!matchId || !this.activePlayerId) {
+      return;
+    }
+    if (this.isAccountSuspended()) {
+      alert('Suspended accounts cannot create or join matches.');
       return;
     }
     const match = this.matches$.getValue().find((item) => item.id === matchId);
@@ -237,6 +250,7 @@ export class App implements OnInit, OnDestroy {
     this.activeMatchId = matchId;
     this.selectedDieIndex = null;
     this.targetWarning = '';
+    this.feedbackLogs = [];
     this.stopLobbyPolling();
     this.loadPlayerAbilities();
     this.pollMatchState();
@@ -244,6 +258,18 @@ export class App implements OnInit, OnDestroy {
   }
 
   leaveMatch() {
+    const matchId = this.activeMatchId;
+    if (matchId && this.activePlayerId) {
+      this.apiService.leaveMatch(matchId, this.activePlayerId).subscribe({
+        next: () => this.clearActiveMatch(),
+        error: () => this.clearActiveMatch()
+      });
+      return;
+    }
+    this.clearActiveMatch();
+  }
+
+  private clearActiveMatch() {
     this.activeMatchId = null;
     this.stopPolling();
     this.matchState$.next(null);
@@ -254,6 +280,8 @@ export class App implements OnInit, OnDestroy {
     this.selectedDieIndex = null;
     this.targetWarning = '';
     this.diceTargets = {};
+    this.feedbackLogs = [];
+    this.loadPlayers();
     this.loadMatches(this.statusFilter || undefined);
     this.startLobbyPolling();
   }
@@ -340,7 +368,7 @@ export class App implements OnInit, OnDestroy {
       next: (round) => {
         this.setRoundState(round);
         this.selectedDieIndex = dieIndex;
-        this.targetWarning = this.missingTargetIndexes().length ? 'Some attack or steal dice still need targets.' : '';
+        this.targetWarning = '';
       },
       error: (err) => alert(this.formatError(err, 'Could not set target.'))
     });
@@ -357,17 +385,14 @@ export class App implements OnInit, OnDestroy {
     if (!this.activeMatchId) {
       return;
     }
-    const missingTargets = this.missingTargetIndexes();
-    if (missingTargets.length > 0) {
-      this.targetWarning = `Select targets for dice ${missingTargets.map((idx) => idx + 1).join(', ')} before resolving.`;
-      return;
-    }
     const roundId = this.getRoundId();
     if (!roundId) {
       return;
     }
+    const previousLogCount = this.matchState$.getValue()?.actionLogs?.length ?? 0;
     this.apiService.resolveRound(this.activeMatchId, roundId).subscribe({
       next: (state) => {
+        this.feedbackLogs = this.extractFeedbackLogs(state.actionLogs.slice(previousLogCount));
         this.matchState$.next(state);
         this.setRoundState(state.currentRoundState ?? null);
         this.selectedDieIndex = null;
@@ -380,11 +405,11 @@ export class App implements OnInit, OnDestroy {
   }
 
   activateAbility() {
-    if (!this.activeMatchId || !this.selectedAbilityId) {
+    if (!this.canActivateAbility()) {
       return;
     }
     const roundId = this.getRoundId();
-    if (!roundId) {
+    if (!this.activeMatchId || !roundId) {
       return;
     }
     this.apiService.activateAbility(
@@ -494,8 +519,30 @@ export class App implements OnInit, OnDestroy {
     return !!round
       && round.status !== 'RESOLVED'
       && this.matchState$.getValue()?.matchStatus === 'IN_PROGRESS'
-      && this.missingTargetIndexes().length === 0
       && this.hasAnyActiveDice();
+  }
+
+  canActivateAbility(): boolean {
+    const round = this.roundState$.getValue();
+    const player = this.activePlayer();
+    const ability = this.selectedAbility();
+    return !!this.activeMatchId
+      && !!round
+      && round.status !== 'RESOLVED'
+      && this.matchState$.getValue()?.matchStatus === 'IN_PROGRESS'
+      && !!player
+      && player.hearts > 0
+      && !!ability
+      && player.tokens >= ability.cost
+      && (!this.selectedAbilityRequiresTarget() || !!this.selectedTargetId);
+  }
+
+  selectedAbility(): any | null {
+    return this.playerAbilities$.getValue().find((ability) => ability.id === this.selectedAbilityId) ?? null;
+  }
+
+  selectedAbilityRequiresTarget(): boolean {
+    return this.selectedAbilityId === 'power-strike' || this.selectedAbilityId === 'token-steal';
   }
 
   validTargets(): Player[] {
@@ -571,7 +618,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   recentDamage(player: Player): number {
-    return this.recentLogs().reduce((total, log) => {
+    return this.feedbackLogs.reduce((total, log) => {
       const escapedName = this.escapeRegExp(player.name);
       const match = log.match(new RegExp(`attacked ${escapedName}\\. \\d+ attack\\(s\\) blocked, (\\d+) damage dealt\\.`));
       return total + (match ? Number(match[1]) : 0);
@@ -579,7 +626,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   recentBlocks(player: Player): number {
-    return this.recentLogs().reduce((total, log) => {
+    return this.feedbackLogs.reduce((total, log) => {
       const escapedName = this.escapeRegExp(player.name);
       const match = log.match(new RegExp(`attacked ${escapedName}\\. (\\d+) attack\\(s\\) blocked, \\d+ damage dealt\\.`));
       return total + (match ? Number(match[1]) : 0);
@@ -587,7 +634,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   recentTokenDelta(player: Player): number {
-    return this.recentLogs().reduce((total, log) => {
+    return this.feedbackLogs.reduce((total, log) => {
       if (log.startsWith(`${player.name} stole 1 token from `)) {
         return total + 1;
       }
@@ -603,7 +650,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   playerHasRecentEvent(player: Player): boolean {
-    return this.recentLogs().some((log) => log.includes(player.name));
+    return this.feedbackLogs.some((log) => log.includes(player.name));
   }
 
   phaseLabel(status: string | null | undefined): string {
@@ -647,6 +694,13 @@ export class App implements OnInit, OnDestroy {
       }
       return payload;
     }, {} as { [key: number]: string });
+  }
+
+  private extractFeedbackLogs(logs: string[]): string[] {
+    return logs.filter((log) =>
+      /attacked .+\. \d+ attack\(s\) blocked, \d+ damage dealt\./.test(log)
+      || log.includes('stole 1 token from ')
+    );
   }
 
   private pollMatchState() {

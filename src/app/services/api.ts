@@ -172,6 +172,10 @@ export class ApiService {
     return this.http.post<any>(`${this.baseUrl}/matches/${matchId}/join`, { playerId });
   }
 
+  leaveMatch(matchId: string, playerId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/matches/${matchId}/leave`, { playerId });
+  }
+
   removePlayerFromMatch(matchId: string, playerId: string): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/matches/${matchId}/players/${playerId}`);
   }
