@@ -1,0 +1,51 @@
+<section class="history-panel" aria-label="Match history">
+  <header class="history-head">
+    <h2>My Match History</h2>
+    <button type="button" class="history-refresh" (click)="load()">↻ Refresh</button>
+  </header>
+
+  <p class="history-error" *ngIf="error">{{ error }}</p>
+  <p class="history-empty" *ngIf="!loading && history.length === 0 && !error">No finished matches yet.</p>
+
+  <ul class="history-list">
+    <li *ngFor="let match of history" class="history-item">
+      <div class="history-main">
+        <span class="history-result" [class.win]="match.winnerId === playerId">
+          {{ match.winnerId === playerId ? 'Victory' : (match.winnerName ? 'Defeat' : '—') }}
+        </span>
+        <span class="history-players">{{ match.participants.length }} players</span>
+        <span class="history-meta">{{ match.finishedAt | date: 'short' }} · {{ match.durationSeconds }}s</span>
+      </div>
+      <div class="history-actions">
+        <span class="history-winner" *ngIf="match.winnerName">🏆 {{ match.winnerName }}</span>
+        <button type="button" *ngIf="match.hasReplay" class="history-replay" (click)="viewReplay(match.matchId)">
+          View replay
+        </button>
+      </div>
+    </li>
+  </ul>
+
+  <div class="replay-modal" *ngIf="selectedReplay" (click)="closeReplay()">
+    <div class="replay-content" (click)="$event.stopPropagation()">
+      <header class="replay-header">
+        <h3>Replay · {{ selectedReplay.matchId.substring(0, 8) }}</h3>
+        <div>
+          <button type="button" (click)="downloadReplay(selectedReplay)">Download JSON</button>
+          <button type="button" (click)="closeReplay()">Close</button>
+        </div>
+      </header>
+
+      <p class="replay-result">
+        Winner: <strong>{{ selectedReplay.winnerName || 'none' }}</strong> · {{ selectedReplay.status }}
+      </p>
+
+      <ol class="replay-timeline">
+        <li *ngFor="let action of selectedReplay.actions">
+          <span class="replay-round">R{{ action.roundNumber }}</span>
+          <span class="replay-type">{{ action.type }}</span>
+          <span class="replay-desc">{{ action.description }}</span>
+        </li>
+      </ol>
+    </div>
+  </div>
+</section>

@@ -1,15 +1,85 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Match, MatchState, Player, RoundState } from '../models/game.models';
+import {
+  Account,
+  AuthResponse,
+  Emote,
+  Match,
+  MatchHistory,
+  MatchState,
+  Player,
+  Replay,
+  RoundState,
+  ServerStatus
+} from '../models/game.models';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class ApiService {
-  private baseUrl = 'http://localhost:3000/api';
+  private baseUrl = environment.apiBaseUrl;
 
   constructor(private http: HttpClient) { }
+
+  // Auth
+
+  register(username: string, email: string, password: string, displayName?: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/register`, { username, email, password, displayName });
+  }
+
+  login(usernameOrEmail: string, password: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.baseUrl}/auth/login`, { usernameOrEmail, password });
+  }
+
+  me(): Observable<Account> {
+    return this.http.get<Account>(`${this.baseUrl}/auth/me`);
+  }
+
+  // Admin (ADMIN role only; backend enforces the ACL)
+
+  getAdminUsers(): Observable<Account[]> {
+    return this.http.get<Account[]>(`${this.baseUrl}/admin/users`);
+  }
+
+  setAccountStatus(accountId: string, status: 'ACTIVE' | 'SUSPENDED'): Observable<Account> {
+    return this.http.patch<Account>(`${this.baseUrl}/admin/users/${accountId}/status`, { status });
+  }
+
+  getAdminMatches(): Observable<Match[]> {
+    return this.http.get<Match[]>(`${this.baseUrl}/admin/matches`);
+  }
+
+  getAdminHistory(): Observable<MatchHistory[]> {
+    return this.http.get<MatchHistory[]>(`${this.baseUrl}/admin/match-history`);
+  }
+
+  getServerStatus(): Observable<ServerStatus> {
+    return this.http.get<ServerStatus>(`${this.baseUrl}/admin/server-status`);
+  }
+
+  // Match history (self or admin)
+
+  getPlayerHistory(playerId: string): Observable<MatchHistory[]> {
+    return this.http.get<MatchHistory[]>(`${this.baseUrl}/players/${playerId}/history`);
+  }
+
+  // Emotes (social)
+
+  sendEmote(matchId: string, playerId: string, emote: string): Observable<Emote> {
+    return this.http.post<Emote>(`${this.baseUrl}/matches/${matchId}/emotes`, { playerId, emote });
+  }
+
+  getEmotes(matchId: string, since: number = 0): Observable<Emote[]> {
+    return this.http.get<Emote[]>(`${this.baseUrl}/matches/${matchId}/emotes?since=${since}`);
+  }
+
+  // Structured JSON replay (participant or admin)
+
+  getReplayJson(matchId: string): Observable<Replay> {
+    return this.http.get<Replay>(`${this.baseUrl}/matches/${matchId}/replay`);
+  }
 
   // Players
 

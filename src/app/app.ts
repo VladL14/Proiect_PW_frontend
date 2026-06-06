@@ -5,12 +5,24 @@ import { FormsModule } from '@angular/forms';
 import { BehaviorSubject, Subscription, interval } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { ApiService } from './services/api';
-import { DiceFace, Match, MatchState, Player, RoundPlayerState, RoundState } from './models/game.models';
+import { AuthService } from './services/auth';
+import { Account, DiceFace, Match, MatchState, Player, Role, RoundPlayerState, RoundState } from './models/game.models';
+import { EmoteBarComponent } from './components/emote-bar/emote-bar';
+import { LoginComponent } from './components/auth/login';
+import { AdminDashboardComponent } from './components/admin/admin-dashboard';
+import { MatchHistoryComponent } from './components/history/match-history';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    EmoteBarComponent,
+    LoginComponent,
+    AdminDashboardComponent,
+    MatchHistoryComponent
+  ],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
@@ -37,21 +49,77 @@ export class App implements OnInit, OnDestroy {
   avatarPanelPlayerId = '';
   selectedDicebearStyle = 'adventurer';
 
+  // --- Stage 4: account session + side panels ---------------------------------
+  account: Account | null = null;
+  activePanel: 'none' | 'login' | 'admin' | 'history' = 'none';
+  private accountSub?: Subscription;
+
   private pollingSub?: Subscription;
   private lobbyPollingSub?: Subscription;
   private readonly isBrowser: boolean;
 
   constructor(
     private apiService: ApiService,
+    private authService: AuthService,
     @Inject(PLATFORM_ID) platformId: object
   ) {
     this.isBrowser = isPlatformBrowser(platformId);
+  }
+
+  get isAuthenticated(): boolean {
+    return this.authService.isAuthenticated;
+  }
+
+  get isAdmin(): boolean {
+    return this.authService.isAdmin;
+  }
+
+  get accountRole(): Role {
+    return this.authService.role;
+  }
+
+  openPanel(panel: 'none' | 'login' | 'admin' | 'history'): void {
+    this.activePanel = this.activePanel === panel ? 'none' : panel;
+  }
+
+  onAuthenticated(): void {
+    this.activePanel = 'none';
+    // After signing in, act as the authenticated account inside the game too.
+    if (this.account) {
+      this.activePlayerId = this.account.id;
+      this.loadPlayers();
+    }
+  }
+
+  logout(): void {
+    this.authService.logout();
+    this.activePanel = 'none';
+  }
+
+  /** Exports the structured JSON replay of the current match as a download. */
+  downloadReplay(): void {
+    if (!this.activeMatchId || !this.isBrowser) {
+      return;
+    }
+    this.apiService.getReplayJson(this.activeMatchId).subscribe({
+      next: (replay) => {
+        const blob = new Blob([JSON.stringify(replay, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `match-${replay.matchId}-replay.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      },
+      error: (err) => console.error('Replay export failed', err)
+    });
   }
 
   ngOnInit() {
     if (!this.isBrowser) {
       return;
     }
+    this.accountSub = this.authService.account$.subscribe((account) => (this.account = account));
     this.loadPlayers();
     this.loadMatches();
     this.startLobbyPolling();
@@ -60,6 +128,7 @@ export class App implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.stopPolling();
     this.stopLobbyPolling();
+    this.accountSub?.unsubscribe();
   }
 
   loadPlayers() {
@@ -360,7 +429,10 @@ export class App implements OnInit, OnDestroy {
     if (!file) {
       return;
     }
-    const hasUploadedAvatar = this.players$.getValue().find(p => p.id === playerId)?.avatarUrl?.includes('localhost');
+    // An uploaded avatar is served by our own API ("/api/players/.../avatar"),
+    // while a generated DiceBear avatar points at api.dicebear.com. Detect by
+    // path so it works on any host, not just localhost.
+    const hasUploadedAvatar = this.players$.getValue().find(p => p.id === playerId)?.avatarUrl?.includes('/api/players/');
     const upload$ = hasUploadedAvatar
       ? this.apiService.replaceAvatar(playerId, file)
       : this.apiService.uploadAvatar(playerId, file);

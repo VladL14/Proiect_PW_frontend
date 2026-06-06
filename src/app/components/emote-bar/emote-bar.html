@@ -1,0 +1,27 @@
+<div class="emote-bar">
+  <div class="emote-feed" aria-live="polite">
+    <span class="emote-bubble" *ngFor="let emote of recent">
+      {{ glyphFor(emote.emote) }}
+      <small>{{ emote.playerName }}</small>
+    </span>
+  </div>
+
+  <div class="emote-palette" role="group" aria-label="Send emote">
+    <button
+      type="button"
+      *ngFor="let entry of palette"
+      class="emote-button"
+      [disabled]="cooldownRemaining > 0"
+      [title]="entry.code"
+      (click)="send(entry.code)">
+      {{ entry.glyph }}
+    </button>
+  </div>
+
+  <div class="emote-status">
+    <span *ngIf="cooldownRemaining > 0" class="emote-cooldown">
+      Cooldown {{ (cooldownRemaining / 1000) | number: '1.1-1' }}s
+    </span>
+    <span *ngIf="error" class="emote-error">{{ error }}</span>
+  </div>
+</div>

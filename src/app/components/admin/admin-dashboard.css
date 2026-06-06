@@ -1,0 +1,133 @@
+.admin-panel {
+  background: #1d232a;
+  border: 1px solid rgba(200, 155, 60, 0.3);
+  border-radius: 16px;
+  padding: 1.2rem 1.4rem;
+  color: #e8ebf0;
+}
+
+.admin-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.admin-head h2 {
+  margin: 0;
+  color: #c89b3c;
+}
+
+.admin-tabs {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.admin-tabs button {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #b9c0c9;
+  border-radius: 8px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.admin-tabs button.active {
+  background: rgba(200, 155, 60, 0.2);
+  color: #c89b3c;
+  border-color: rgba(200, 155, 60, 0.5);
+}
+
+.admin-refresh {
+  margin-left: auto;
+}
+
+.admin-error {
+  color: #e06c6c;
+  font-size: 0.85rem;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.6rem;
+}
+
+.stat {
+  background: #11151b;
+  border-radius: 10px;
+  padding: 0.7rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.stat span {
+  font-size: 0.72rem;
+  color: #8a929c;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stat strong {
+  font-size: 1.4rem;
+  color: #fff;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.admin-table th,
+.admin-table td {
+  text-align: left;
+  padding: 0.45rem 0.55rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.admin-table th {
+  color: #8a929c;
+  font-weight: 600;
+}
+
+.mono {
+  font-family: "Fira Code", monospace;
+  color: #c89b3c;
+}
+
+.role {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.role-ADMIN {
+  background: rgba(200, 155, 60, 0.25);
+  color: #c89b3c;
+}
+
+.role-USER {
+  background: rgba(120, 170, 255, 0.18);
+  color: #8fb6ff;
+}
+
+.role-GUEST {
+  background: rgba(255, 255, 255, 0.1);
+  color: #b9c0c9;
+}
+
+.admin-mini {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  color: #e8ebf0;
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+}

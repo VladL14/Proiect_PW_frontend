@@ -54,3 +54,94 @@ export interface MatchState {
   roundSummary?: string | null;
   actionLogs: string[];
 }
+
+// --- Stage 4: accounts, ACL, social, history and replay -----------------------
+
+export type Role = 'GUEST' | 'USER' | 'ADMIN';
+export type AccountStatus = 'ACTIVE' | 'SUSPENDED';
+
+export interface Account {
+  id: string;
+  username: string | null;
+  email: string | null;
+  name: string;
+  role: Role;
+  status: AccountStatus;
+  createdAt: string | null;
+  matchesPlayed: number;
+  wins: number;
+  losses: number;
+}
+
+export interface AuthResponse {
+  token: string;
+  expiresAt: string;
+  role: Role;
+  account: Account;
+}
+
+export interface ServerStatus {
+  totalAccounts: number;
+  adminCount: number;
+  totalMatches: number;
+  waitingMatches: number;
+  readyMatches: number;
+  inProgressMatches: number;
+  finishedMatches: number;
+  recordedHistory: number;
+  generatedAt: string;
+}
+
+export interface Participant {
+  id: string;
+  name: string;
+}
+
+export interface MatchHistory {
+  id: string;
+  matchId: string;
+  participants: Participant[];
+  winnerId: string | null;
+  winnerName: string | null;
+  finalStatus: string;
+  startedAt: string;
+  finishedAt: string;
+  durationSeconds: number;
+  events: string[];
+  hasReplay: boolean;
+}
+
+export interface Emote {
+  id: string;
+  matchId: string;
+  playerId: string;
+  playerName: string;
+  emote: string;
+  timestamp: number;
+}
+
+export interface ReplayAction {
+  sequence: number;
+  timestamp: string;
+  roundNumber: number;
+  type: string;
+  description: string;
+}
+
+export interface PlayerSnapshot {
+  playerId: string;
+  name: string;
+  hearts: number;
+  tokens: number;
+}
+
+export interface Replay {
+  matchId: string;
+  status: string;
+  participants: Participant[];
+  initialState: PlayerSnapshot[];
+  actions: ReplayAction[];
+  winnerId: string | null;
+  winnerName: string | null;
+  finishedAt: string | null;
+}

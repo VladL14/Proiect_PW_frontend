@@ -1,0 +1,71 @@
+<section class="admin-panel" aria-label="Admin dashboard">
+  <header class="admin-head">
+    <h2>Admin Console</h2>
+    <nav class="admin-tabs">
+      <button type="button" [class.active]="tab === 'server'" (click)="tab = 'server'">Server</button>
+      <button type="button" [class.active]="tab === 'users'" (click)="tab = 'users'">Accounts</button>
+      <button type="button" [class.active]="tab === 'matches'" (click)="tab = 'matches'">Matches</button>
+      <button type="button" [class.active]="tab === 'history'" (click)="tab = 'history'">History</button>
+      <button type="button" class="admin-refresh" (click)="refresh()">↻ Refresh</button>
+    </nav>
+  </header>
+
+  <p class="admin-error" *ngIf="error">{{ error }}</p>
+
+  <div *ngIf="tab === 'server' && status" class="admin-stats">
+    <div class="stat"><span>Accounts</span><strong>{{ status.totalAccounts }}</strong></div>
+    <div class="stat"><span>Admins</span><strong>{{ status.adminCount }}</strong></div>
+    <div class="stat"><span>Total matches</span><strong>{{ status.totalMatches }}</strong></div>
+    <div class="stat"><span>Waiting</span><strong>{{ status.waitingMatches }}</strong></div>
+    <div class="stat"><span>In progress</span><strong>{{ status.inProgressMatches }}</strong></div>
+    <div class="stat"><span>Finished</span><strong>{{ status.finishedMatches }}</strong></div>
+    <div class="stat"><span>History records</span><strong>{{ status.recordedHistory }}</strong></div>
+  </div>
+
+  <table class="admin-table" *ngIf="tab === 'users'">
+    <thead>
+      <tr><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Created</th><th>Played</th><th>W/L</th><th></th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let u of users">
+        <td>{{ u.username || u.name }}</td>
+        <td>{{ u.email || '—' }}</td>
+        <td><span class="role role-{{ u.role }}">{{ u.role }}</span></td>
+        <td>{{ u.status }}</td>
+        <td>{{ u.createdAt ? (u.createdAt | date: 'short') : '—' }}</td>
+        <td>{{ u.matchesPlayed }}</td>
+        <td>{{ u.wins }}/{{ u.losses }}</td>
+        <td>
+          <button type="button" class="admin-mini" (click)="toggleStatus(u)">
+            {{ u.status === 'ACTIVE' ? 'Suspend' : 'Activate' }}
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="admin-table" *ngIf="tab === 'matches'">
+    <thead><tr><th>Match</th><th>Status</th><th>Players</th><th>Winner</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let m of matches">
+        <td class="mono">{{ m.id.substring(0, 8) }}</td>
+        <td>{{ m.status }}</td>
+        <td>{{ m.players.length }}</td>
+        <td>{{ m.winnerPlayerId ? m.winnerPlayerId.substring(0, 8) : '—' }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <table class="admin-table" *ngIf="tab === 'history'">
+    <thead><tr><th>Match</th><th>Participants</th><th>Winner</th><th>Duration</th><th>Finished</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let h of history">
+        <td class="mono">{{ h.matchId.substring(0, 8) }}</td>
+        <td>{{ h.participants.length }}</td>
+        <td>{{ h.winnerName || '—' }}</td>
+        <td>{{ h.durationSeconds }}s</td>
+        <td>{{ h.finishedAt | date: 'short' }}</td>
+      </tr>
+    </tbody>
+  </table>
+</section>

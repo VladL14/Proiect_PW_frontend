@@ -1,5 +1,25 @@
 <ng-container *ngIf="{ players: players$ | async, matches: matches$ | async } as data">
 
+<!-- Stage 4: account bar (ACL-aware: options are only shown for the matching role) -->
+<nav class="account-bar" aria-label="Account">
+  <span class="account-chip" *ngIf="isAuthenticated">
+    {{ account?.name }} · <strong>{{ accountRole }}</strong>
+  </span>
+  <button type="button" class="account-button" *ngIf="isAuthenticated" (click)="openPanel('history')">History</button>
+  <button type="button" class="account-button admin" *ngIf="isAdmin" (click)="openPanel('admin')">Admin</button>
+  <button type="button" class="account-button primary" *ngIf="!isAuthenticated" (click)="openPanel('login')">Sign in</button>
+  <button type="button" class="account-button" *ngIf="isAuthenticated" (click)="logout()">Sign out</button>
+</nav>
+
+<div class="overlay-backdrop" *ngIf="activePanel !== 'none'" (click)="openPanel('none')">
+  <div class="overlay-panel" (click)="$event.stopPropagation()">
+    <app-login *ngIf="activePanel === 'login'" (authenticated)="onAuthenticated()" (closed)="openPanel('none')"></app-login>
+    <app-admin-dashboard *ngIf="activePanel === 'admin'"></app-admin-dashboard>
+    <app-match-history *ngIf="activePanel === 'history'" [playerId]="account?.id || activePlayerId"></app-match-history>
+    <button type="button" class="overlay-close" *ngIf="activePanel !== 'login'" (click)="openPanel('none')">Close</button>
+  </div>
+</div>
+
 <div class="lobby-wrapper" *ngIf="!activeMatchId">
   <header class="app-header">
     <div class="logo-mark">
@@ -180,6 +200,8 @@
         </div>
         <div class="header-actions">
           <div class="phase-banner">{{ phaseLabel(round.status) }}</div>
+          <app-emote-bar [matchId]="activeMatchId!" [playerId]="activePlayerId"></app-emote-bar>
+          <button type="button" class="game-button ghost" (click)="downloadReplay()">Export Replay</button>
           <button type="button" class="game-button ghost" (click)="leaveMatch()">Leave Match</button>
         </div>
       </header>
