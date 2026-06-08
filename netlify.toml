@@ -1,0 +1,16 @@
+# Netlify build configuration for the Angular frontend.
+#
+# Trebuie sa fie la radacina repo-ului Proiect_PW_frontend.
+# Netlify il citeste automat cand conectezi repo-ul.
+
+[build]
+  # Fara "base" — radacina repo-ului este deja folderul de frontend.
+  command = "npm ci && npm run build"
+  publish = "dist/dice-duel-frontend/browser"
+
+# Fallback SPA: orice ruta care nu e un fisier static → index.html.
+# public/_redirects face acelasi lucru; aceasta e copie de siguranta.
+[[redirects]]
+  from   = "/*"
+  to     = "/index.html"
+  status = 200

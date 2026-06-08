@@ -10,5 +10,5 @@
  */
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://REPLACE-WITH-YOUR-BACKEND-HOST/api'
+  apiBaseUrl: 'https://dice-duel-api.onrender.com'
 };
