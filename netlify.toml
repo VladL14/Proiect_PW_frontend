@@ -5,7 +5,7 @@
 
 [build]
   # Fara "base" — radacina repo-ului este deja folderul de frontend.
-  command = "npm ci && npm run build"
+  command = "npm ci && npm run build -- --output-mode=static"
   publish = "dist/dice-duel-frontend/browser"
 
 # Fallback SPA: orice ruta care nu e un fisier static → index.html.
