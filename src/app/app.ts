@@ -542,7 +542,7 @@ export class App implements OnInit, OnDestroy {
   }
 
   selectedAbilityRequiresTarget(): boolean {
-    return this.selectedAbilityId === 'power-strike' || this.selectedAbilityId === 'token-steal';
+    return this.selectedAbilityId === 'power-strike';
   }
 
   validTargets(): Player[] {
