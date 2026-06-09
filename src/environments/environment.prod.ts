@@ -10,5 +10,5 @@
  */
 export const environment = {
   production: true,
-  apiBaseUrl: 'https://dice-duel-api.onrender.com/api'
+  apiBaseUrl: '/api'
 };
